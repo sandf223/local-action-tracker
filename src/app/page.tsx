@@ -1,6 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import BlockHeader from '@/components/BlockHeader';
+import ApiDataTable from '@/components/ApiDataTable';
+import FixedFieldCard from '@/components/FixedFieldCard';
 
 interface ActionLog {
   id: number;
@@ -10,10 +13,15 @@ interface ActionLog {
   created_at: string;
 }
 
+type JsonRecord = Record<string, unknown>;
+
 export default function Home() {
   const [logs, setLogs] = useState<ActionLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [inputVal, setInputVal] = useState('');
+  const [taskRows, setTaskRows] = useState<JsonRecord[]>([]);
+  const [taskLoading, setTaskLoading] = useState(false);
+  const [taskError, setTaskError] = useState<string | null>(null);
 
   // Загрузка существующих записей
   const fetchLogs = async () => {
@@ -28,8 +36,30 @@ export default function Home() {
     }
   };
 
+  const fetchTask3 = async () => {
+    setTaskLoading(true);
+    setTaskError(null);
+    try {
+      const res = await fetch('/api/task3');
+      const json = await res.json();
+      if (json.success) {
+        setTaskRows(json.data || []);
+      } else {
+        setTaskRows([]);
+        setTaskError(json.error || 'Не удалось загрузить данные локального API');
+      }
+    } catch (err) {
+      console.error('Failed to load task3 data:', err);
+      setTaskRows([]);
+      setTaskError('Не удалось загрузить данные локального API');
+    } finally {
+      setTaskLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchLogs();
+    fetchTask3();
   }, []);
 
   // Отправка нового действия в базу
@@ -78,6 +108,24 @@ export default function Home() {
             Тестовый интерфейс: генерация событий в браузере и фиксация в PostgreSQL
           </p>
         </header>
+
+        <section className="bg-slate-800 p-6 rounded-lg border border-slate-700 space-y-4">
+          <BlockHeader
+            title="Данные локального API"
+            description="Таблица из task_3 и четыре фиксированных поля (пока без источника)"
+            onRefresh={fetchTask3}
+            refreshing={taskLoading}
+          />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <FixedFieldCard label="Поле 1" />
+            <FixedFieldCard label="Поле 2" />
+            <FixedFieldCard label="Поле 3" />
+            <FixedFieldCard label="Поле 4" />
+          </div>
+
+          <ApiDataTable rows={taskRows} loading={taskLoading} error={taskError} />
+        </section>
 
         {/* Секция действий */}
         <section className="bg-slate-800 p-6 rounded-lg border border-slate-700 space-y-4">
